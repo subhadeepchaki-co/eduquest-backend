@@ -44,13 +44,17 @@ public class PaymentController {
                 return ResponseEntity.status(429).body(Map.of("error", "Too many requests. Try again later."));
             }
 
-            if (!hmacService.verify(
+            String hmacResult = hmacService.verifyAndGetExpected(
                     servletRequest.getHeader("X-Timestamp"),
                     servletRequest.getHeader("X-Signature"),
                     "POST",
                     "/api/payments/create-order"
-            )) {
-                return ResponseEntity.status(401).body(Map.of("error", "Invalid request signature"));
+            );
+            if (!"ok".equals(hmacResult)) {
+                Map<String, Object> errResponse = new HashMap<>();
+                errResponse.put("error", "Invalid request signature");
+                errResponse.put("hmac", hmacResult);
+                return ResponseEntity.status(401).body(errResponse);
             }
 
             Object amountObj = request.get("amount");
@@ -92,13 +96,17 @@ public class PaymentController {
                 return ResponseEntity.status(429).body(Map.of("error", "Too many requests. Try again later."));
             }
 
-            if (!hmacService.verify(
+            String hmacResult = hmacService.verifyAndGetExpected(
                     servletRequest.getHeader("X-Timestamp"),
                     servletRequest.getHeader("X-Signature"),
                     "POST",
                     "/api/payments/verify"
-            )) {
-                return ResponseEntity.status(401).body(Map.of("error", "Invalid request signature"));
+            );
+            if (!"ok".equals(hmacResult)) {
+                Map<String, Object> errResponse = new HashMap<>();
+                errResponse.put("error", "Invalid request signature");
+                errResponse.put("hmac", hmacResult);
+                return ResponseEntity.status(401).body(errResponse);
             }
 
             String orderId = request.get("razorpay_order_id");
