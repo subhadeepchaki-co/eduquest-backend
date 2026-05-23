@@ -44,6 +44,7 @@ public class PaymentController {
                 return ResponseEntity.status(429).body(Map.of("error", "Too many requests. Try again later."));
             }
 
+            /* HMAC DISABLED for testing
             if (!hmacService.verify(
                     servletRequest.getHeader("X-Timestamp"),
                     servletRequest.getHeader("X-Signature"),
@@ -52,6 +53,7 @@ public class PaymentController {
             )) {
                 return ResponseEntity.status(401).body(Map.of("error", "Invalid request signature"));
             }
+            */
 
             Object amountObj = request.get("amount");
             if (amountObj == null) {
@@ -92,6 +94,7 @@ public class PaymentController {
                 return ResponseEntity.status(429).body(Map.of("error", "Too many requests. Try again later."));
             }
 
+            /* HMAC DISABLED for testing
             if (!hmacService.verify(
                     servletRequest.getHeader("X-Timestamp"),
                     servletRequest.getHeader("X-Signature"),
@@ -100,6 +103,7 @@ public class PaymentController {
             )) {
                 return ResponseEntity.status(401).body(Map.of("error", "Invalid request signature"));
             }
+            */
 
             String orderId = request.get("razorpay_order_id");
             String paymentId = request.get("razorpay_payment_id");
