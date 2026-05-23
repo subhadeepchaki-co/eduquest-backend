@@ -25,35 +25,39 @@ public class HmacService {
         }
     }
 
-    public String verifyAndGetExpected(String timestampHeader, String signatureHeader,
-                                       String method, String path) {
+    public boolean verify(String timestampHeader, String signatureHeader,
+                          String method, String path) {
         if (secret == null || secret.isBlank()) {
-            return "ok";
+            log.warn("HMAC_SECRET not set — allowing request without verification");
+            return true;
         }
         if (timestampHeader == null || signatureHeader == null) {
-            return "missing_headers";
+            log.warn("Missing HMAC headers");
+            return false;
         }
+
         long timestamp;
         try {
             timestamp = Long.parseLong(timestampHeader);
         } catch (NumberFormatException e) {
-            return "bad_timestamp";
+            log.warn("Invalid timestamp format: {}", timestampHeader);
+            return false;
         }
+
         long now = System.currentTimeMillis();
         if (Math.abs(now - timestamp) > MAX_TIME_DIFF_MS) {
-            return "expired";
+            log.warn("Timestamp too old or in future: diff={}ms", now - timestamp);
+            return false;
         }
+
         String payload = timestamp + method + path;
         String expected = hmacHex(payload);
-        if (expected.equals(signatureHeader)) {
-            return "ok";
-        }
-        return expected;
-    }
+        boolean valid = expected.equals(signatureHeader);
 
-    public boolean verify(String timestampHeader, String signatureHeader,
-                          String method, String path) {
-        return "ok".equals(verifyAndGetExpected(timestampHeader, signatureHeader, method, path));
+        if (!valid) {
+            log.warn("HMAC signature mismatch");
+        }
+        return valid;
     }
 
     private String hmacHex(String data) {
