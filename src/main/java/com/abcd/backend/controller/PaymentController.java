@@ -1,5 +1,7 @@
 package com.abcd.backend.controller;
 
+import com.abcd.backend.security.HmacService;
+import com.abcd.backend.security.RateLimitService;
 import com.abcd.backend.service.PaymentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,14 +22,37 @@ public class PaymentController {
     private static final int ANIMALS_AMOUNT = 100;
 
     private final PaymentService paymentService;
+    private final HmacService hmacService;
+    private final RateLimitService rateLimitService;
 
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService,
+                             HmacService hmacService,
+                             RateLimitService rateLimitService) {
         this.paymentService = paymentService;
+        this.hmacService = hmacService;
+        this.rateLimitService = rateLimitService;
     }
 
     @PostMapping("/create-order")
-    public ResponseEntity<Map<String, Object>> createOrder(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> createOrder(
+            @RequestBody Map<String, Object> request,
+            HttpServletRequest servletRequest
+    ) {
         try {
+            String ip = getClientIp(servletRequest);
+            if (!rateLimitService.isAllowed("create-order:" + ip)) {
+                return ResponseEntity.status(429).body(Map.of("error", "Too many requests. Try again later."));
+            }
+
+            if (!hmacService.verify(
+                    servletRequest.getHeader("X-Timestamp"),
+                    servletRequest.getHeader("X-Signature"),
+                    "POST",
+                    "/api/payments/create-order"
+            )) {
+                return ResponseEntity.status(401).body(Map.of("error", "Invalid request signature"));
+            }
+
             Object amountObj = request.get("amount");
             if (amountObj == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Missing 'amount' field"));
@@ -56,8 +82,25 @@ public class PaymentController {
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<Map<String, Object>> verifyPayment(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, Object>> verifyPayment(
+            @RequestBody Map<String, String> request,
+            HttpServletRequest servletRequest
+    ) {
         try {
+            String ip = getClientIp(servletRequest);
+            if (!rateLimitService.isAllowed("verify:" + ip)) {
+                return ResponseEntity.status(429).body(Map.of("error", "Too many requests. Try again later."));
+            }
+
+            if (!hmacService.verify(
+                    servletRequest.getHeader("X-Timestamp"),
+                    servletRequest.getHeader("X-Signature"),
+                    "POST",
+                    "/api/payments/verify"
+            )) {
+                return ResponseEntity.status(401).body(Map.of("error", "Invalid request signature"));
+            }
+
             String orderId = request.get("razorpay_order_id");
             String paymentId = request.get("razorpay_payment_id");
             String signature = request.get("razorpay_signature");
@@ -79,5 +122,13 @@ public class PaymentController {
             err.put("error", "Verification failed");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
         }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }
