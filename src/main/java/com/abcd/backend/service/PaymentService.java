@@ -47,6 +47,15 @@ public class PaymentService {
         factory.setReadTimeout(READ_TIMEOUT);
 
         this.restTemplate = new RestTemplate(factory);
+
+        if (keyId == null || keyId.isBlank() ||
+                keySecret == null || keySecret.isBlank()) {
+            log.warn(
+                    "Razorpay credentials not configured. " +
+                    "Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET " +
+                    "environment variables to enable payments."
+            );
+        }
     }
 
     /**
@@ -56,6 +65,14 @@ public class PaymentService {
             int amountPaise,
             String currency
     ) {
+
+        if (keyId == null || keyId.isBlank() ||
+                keySecret == null || keySecret.isBlank()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Razorpay not configured");
+            return error;
+        }
 
         try {
 
@@ -167,6 +184,12 @@ public class PaymentService {
             String razorpayPaymentId,
             String razorpaySignature
     ) {
+
+        if (keyId == null || keyId.isBlank() ||
+                keySecret == null || keySecret.isBlank()) {
+            log.warn("Razorpay not configured — cannot verify payment");
+            return false;
+        }
 
         try {
 
