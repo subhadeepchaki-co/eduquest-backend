@@ -9,7 +9,6 @@ version = '1.0.0'
 sourceCompatibility = '11'
 
 repositories {
-    maven { url 'https://maven.aliyun.com/repository/public/' }
     mavenCentral()
 }
 

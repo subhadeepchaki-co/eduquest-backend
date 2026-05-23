@@ -2,3 +2,4 @@ start.sh
 .env
 *.env
 /build
+.gradle/
