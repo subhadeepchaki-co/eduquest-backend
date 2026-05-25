@@ -18,8 +18,8 @@ import java.util.Map;
 public class PaymentController {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
-    private static final int PREMIUM_AMOUNT = 9900;
-    private static final int ANIMALS_AMOUNT = 100;
+    private static final int MIN_AMOUNT = 100;
+    private static final int MAX_AMOUNT = 1_200_000;
 
     private final PaymentService paymentService;
     private final HmacService hmacService;
@@ -65,11 +65,10 @@ public class PaymentController {
             } else {
                 amount = ((Number) amountObj).intValue();
             }
-            String category = (String) request.getOrDefault("category", "premium");
-            int expectedAmount = "animals".equals(category) ? ANIMALS_AMOUNT : PREMIUM_AMOUNT;
-            if (amount != expectedAmount) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid amount for category: " + category));
+            if (amount < MIN_AMOUNT || amount > MAX_AMOUNT) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Amount must be between ₹1 and ₹12000"));
             }
+            String category = (String) request.getOrDefault("category", "premium");
             String currency = (String) request.getOrDefault("currency", "INR");
             Map<String, Object> order = paymentService.createOrder(amount, currency);
             order.put("category", category);
